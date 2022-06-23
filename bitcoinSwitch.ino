@@ -19,7 +19,7 @@ fs::SPIFFSFS &FlashFS = SPIFFS;
 /////////////////////////////////
 ///////////CHANGE////////////////
 /////////////////////////////////
-
+        
 bool usingM5 = true; // false if not using M5Stack          
 bool format = false; // true for formatting SPIFFS, use once, then make false and reflash
 int portalPin = 4;
@@ -175,12 +175,6 @@ void setup()
 {
   Serial.begin(115200);
   Wire.begin();
-  if(usingM5 == true){
-    tft.init();
-    tft.setRotation(1);
-    tft.invertDisplay(true);
-    logoScreen();
-  }
   const byte BUTTON_PIN_A = 39;
   Button BTNA(BUTTON_PIN_A);
   BTNA.begin();
@@ -189,21 +183,12 @@ void setup()
   while (timer < 2000)
   {
     digitalWrite(2, LOW);
-    if (usingM5 == true){
-      if (BTNA.read() == 1){
-        Serial.println("Launch portal");
-        triggerAp = true;
-        timer = 5000;
-      }
-    }
-    else{
       Serial.println(touchRead(portalPin));
       if(touchRead(portalPin) < 60){
         Serial.println("Launch portal");
         triggerAp = true;
         timer = 5000;
       }
-    }
     digitalWrite(2, HIGH);
     timer = timer + 100;
     delay(300);
@@ -342,9 +327,6 @@ void setup()
 
 void loop() {
   while(WiFi.status() != WL_CONNECTED){
-    if(usingM5 == true){
-      connectionError();
-    }
     Serial.println("Failed to connect");
     delay(500);
   }
@@ -352,20 +334,17 @@ void loop() {
   Serial.println(timePin.toInt());
   Serial.println(lnurlP.substring(0, 5));
   if(lnurlP.substring(0, 5) == "LNURL"){
-    if(usingM5 == true){
-      qrdisplayScreen();
-    }
     checkBalance();
     oldBalance = balance;
-    while((oldBalance + amount.toInt()) > balance){
+    while((oldBalance + 1) > balance){
       checkBalance();
+      if (balance < oldBalance) {
+        oldBalance = balance;
+      }
       delay(2000);
     }
     oldBalance = balance;
     Serial.println("Paid");
-    if(usingM5 == true){
-      paidScreen();
-    }
     digitalWrite(highPin.toInt(), HIGH);
     delay(timePin.toInt());
     digitalWrite(highPin.toInt(), LOW); 
@@ -380,18 +359,12 @@ void loop() {
       delay(5000);
     }
     if(payReq != ""){
-      if(usingM5 == true){
-        qrdisplayScreen();
-      }
       delay(5000);
     }
     while(paid == false && payReq != ""){
       checkInvoice();
       if(paid){
         Serial.println("Paid");
-        if(usingM5 == true){
-          completeScreen();
-        }
         digitalWrite(highPin.toInt(), HIGH);
         delay(timePin.toInt());
         digitalWrite(highPin.toInt(), LOW); 
@@ -414,15 +387,6 @@ void serverError()
   tft.setTextSize(3);
   tft.setTextColor(TFT_RED);
   tft.println("Server connect fail");
-}
-
-void connectionError()
-{
-  tft.fillScreen(TFT_WHITE);
-  tft.setCursor(0, 80);
-  tft.setTextSize(3);
-  tft.setTextColor(TFT_RED);
-  tft.println("Wifi connect fail");
 }
 
 void connection()
@@ -479,15 +443,6 @@ void portalScreen()
   tft.println("PORTAL LAUNCHED");
 }
 
-void paidScreen()
-{ 
-  tft.fillScreen(TFT_BLACK);
-  tft.setCursor(110, 80);
-  tft.setTextSize(4);
-  tft.setTextColor(TFT_WHITE);
-  tft.println("PAID");
-}
-
 void completeScreen()
 { 
   tft.fillScreen(TFT_BLACK);
@@ -504,38 +459,6 @@ void errorScreen()
   tft.setTextSize(4);
   tft.setTextColor(TFT_WHITE);
   tft.println("ERROR");
-}
-
-void qrdisplayScreen()
-{
-  String qrCodeData;
-  if(lnurlP.substring(0, 5) == "LNURL"){
-    qrCodeData = lnurlP;
-  }
-  else{
-    qrCodeData = payReq;
-  }
-  tft.fillScreen(TFT_WHITE);
-  qrCodeData.toUpperCase();
-  const char *qrDataChar = qrCodeData.c_str();
-  QRCode qrcoded;
-  uint8_t qrcodeData[qrcode_getBufferSize(20)];
-  qrcode_initText(&qrcoded, qrcodeData, 11, 0, qrDataChar);
-  for (uint8_t y = 0; y < qrcoded.size; y++)
-  {
-    // Each horizontal module
-    for (uint8_t x = 0; x < qrcoded.size; x++)
-    {
-      if (qrcode_getModule(&qrcoded, x, y))
-      {
-        tft.fillRect(65 + 3 * x, 20 + 3 * y, 3, 3, TFT_BLACK);
-      }
-      else
-      {
-        tft.fillRect(65 + 3 * x, 20 + 3 * y, 3, 3, TFT_WHITE);
-      }
-    }
-  }
 }
 
 //////////////////NODE CALLS///////////////////
